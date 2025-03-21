@@ -7,15 +7,15 @@ public class OrbManager : MonoBehaviour
     public GameObject orbPrefab;
     public int poolSize = 4;
     public float spawnDistance = 30f;
-
-    private Queue<GameObject> playerOrbQueue = new Queue<GameObject>();
-    private Queue<GameObject> ghostOrbQueue = new Queue<GameObject>();
-    private Dictionary<GameObject, GameObject> orbPairs = new Dictionary<GameObject, GameObject>();
-
+    public GameManager manager;
+    public Queue<GameObject> playerOrbQueue = new Queue<GameObject>();
+    public Queue<GameObject> ghostOrbQueue = new Queue<GameObject>();
+    public Dictionary<GameObject, GameObject> orbPairs = new Dictionary<GameObject, GameObject>();
     public Transform player, ghost;
     private float lastSpawnZ;
 
-    void Start()
+    #region  Spawn
+    public void Spawn()
     {
         lastSpawnZ = player.position.z + spawnDistance;
 
@@ -23,7 +23,8 @@ public class OrbManager : MonoBehaviour
         {
             GameObject playerOrb = Instantiate(orbPrefab, new Vector3(0, 1.5f, lastSpawnZ), Quaternion.identity);
             GameObject ghostOrb = Instantiate(orbPrefab, new Vector3(-50, 1.5f, lastSpawnZ), Quaternion.identity);
-
+            manager.instantiatedObjects.Add(playerOrb);
+            manager.instantiatedObjects.Add(ghostOrb);
             playerOrbQueue.Enqueue(playerOrb);
             ghostOrbQueue.Enqueue(ghostOrb);
             orbPairs[playerOrb] = ghostOrb;
@@ -31,72 +32,80 @@ public class OrbManager : MonoBehaviour
             lastSpawnZ += spawnDistance;
         }
     }
+    #endregion
 
+    #region Call reuse after player crosses the collectable Orbs
     void Update()
     {
-        if (playerOrbQueue.Count > 0)
+        if (playerOrbQueue.Count > 0 && ghostOrbQueue.Count > 0)
         {
-            GameObject nextOrb = playerOrbQueue.Peek();
+            GameObject nextPlayerOrb = playerOrbQueue.Peek();
+            GameObject linkedGhostOrb = orbPairs[nextPlayerOrb];
 
-            // 🚀 If the player has passed the orb and didn't collect it, recycle it
-            if (nextOrb.activeSelf && player.position.z > nextOrb.transform.position.z + 5f)
+            if (player.position.z > nextPlayerOrb.transform.position.z + 5f &&
+                ghost.position.z > linkedGhostOrb.transform.position.z + 5f)
             {
-                Debug.Log("Player missed the orb, recycling it.");
-                RecycleOrb();
+                Debug.Log($"Both Player and Ghost crossed {nextPlayerOrb.name}, recycling it.");
+                RecycleOrb(nextPlayerOrb);
             }
         }
     }
+    #endregion
 
-    void RecycleOrb()
+    #region Collect Function
+    public void CollectOrb(GameObject collectedOrb)
     {
-        lastSpawnZ += spawnDistance;
+        GameObject playerOrb = collectedOrb.transform.parent.gameObject;
+        if (!orbPairs.ContainsKey(playerOrb)) return;
 
-        if (playerOrbQueue.Count > 0 && ghostOrbQueue.Count > 0)
-        {
-            GameObject oldPlayerOrb = playerOrbQueue.Dequeue();
-            GameObject oldGhostOrb = ghostOrbQueue.Dequeue();
+        GameObject linkedGhostOrb = orbPairs[playerOrb];
 
-            Vector3 newPosition = new Vector3(0, 1.5f, lastSpawnZ);
-            oldPlayerOrb.transform.position = newPosition;
-            oldGhostOrb.transform.position = new Vector3(-50, 1.5f, lastSpawnZ);
+        playerOrb.SetActive(false);
 
-            oldPlayerOrb.SetActive(true); // Ensure orb is visible again
+        Debug.Log($"Player collected {playerOrb.name}, waiting for Ghost to reach {linkedGhostOrb.name}.");
 
-            playerOrbQueue.Enqueue(oldPlayerOrb);
-            ghostOrbQueue.Enqueue(oldGhostOrb);
-
-            // ✅ Keep dictionary updated
-            orbPairs[oldPlayerOrb] = oldGhostOrb;
-        }
+        StartCoroutine(WaitForGhostToReachOrb(linkedGhostOrb, playerOrb));
     }
 
-    public void CollectOrb(GameObject orb)
+    private IEnumerator WaitForGhostToReachOrb(GameObject ghostOrb, GameObject playerOrb)
     {
-        GameObject orbParent = orb.transform.parent.gameObject;
-        if (!orbPairs.ContainsKey(orbParent)) return;
+        float maxWaitTime = 3.0f;
+        float elapsedTime = 0f;
 
-        GameObject linkedGhostOrb = orbPairs[orbParent];
-
-        // ✅ Ensure correct ghost orb is dequeued and enqueued
-        if (ghostOrbQueue.Contains(linkedGhostOrb))
+        while (ghost.position.z < ghostOrb.transform.position.z)
         {
-            ghostOrbQueue = ReorderQueue(ghostOrbQueue, linkedGhostOrb);
+            if (elapsedTime > maxWaitTime) break;
+            elapsedTime += Time.deltaTime;
+            yield return null;
         }
-        else
-        {
-            Debug.LogWarning("Ghost orb not found in queue! Fixing queue...");
-            FixOrbQueue();
-        }
-
-        // 🚀 Move the player orb immediately
-        playerOrbQueue.Dequeue();
-        playerOrbQueue.Enqueue(orbParent);
 
         ghost.GetComponent<GhostController>().particles.Play();
+        playerOrb.SetActive(true);
+        RecycleOrb(playerOrb);
+    }
+    #endregion
 
-        linkedGhostOrb.transform.position = new Vector3(-50, 1.5f, lastSpawnZ);
-        orbParent.transform.position = new Vector3(0, 1.5f, lastSpawnZ);
+    #region  Reuse Orbs
+    void RecycleOrb(GameObject playerOrb)
+    {
+        if (!orbPairs.ContainsKey(playerOrb)) return;
 
+        GameObject ghostOrb = orbPairs[playerOrb];
+        lastSpawnZ += spawnDistance;
+
+        Vector3 newPosition = new Vector3(0, 1.5f, lastSpawnZ);
+        playerOrb.transform.position = newPosition;
+        ghostOrb.transform.position = new Vector3(-50, 1.5f, lastSpawnZ);
+
+        playerOrb.SetActive(true);
+
+        playerOrbQueue = ReorderQueue(playerOrbQueue, playerOrb);
+        ghostOrbQueue = ReorderQueue(ghostOrbQueue, ghostOrb);
+
+        orbPairs.Remove(playerOrb);
+        orbPairs[playerOrb] = ghostOrb;
+
+        Debug.Log($"Recycled Player Orb {playerOrb.name} and Ghost Orb {ghostOrb.name}.");
     }
 
     private Queue<GameObject> ReorderQueue(Queue<GameObject> queue, GameObject targetOrb)
@@ -106,35 +115,22 @@ public class OrbManager : MonoBehaviour
         while (queue.Count > 0)
         {
             GameObject orb = queue.Dequeue();
-
             if (orb == targetOrb)
             {
-                tempQueue.Enqueue(orb); // ✅ Place the correct orb first
+                tempQueue.Enqueue(orb);
                 break;
             }
-
             tempQueue.Enqueue(orb);
         }
 
         while (queue.Count > 0)
         {
-            tempQueue.Enqueue(queue.Dequeue()); // ✅ Add the rest back
+            tempQueue.Enqueue(queue.Dequeue());
         }
 
         return tempQueue;
     }
-
-    private void FixOrbQueue()
-    {
-        ghostOrbQueue.Clear();
-
-        foreach (var pair in orbPairs)
-        {
-            ghostOrbQueue.Enqueue(pair.Value);
-        }
-
-        Debug.LogWarning("Ghost queue fixed! Now fully synced.");
-    }
+    #endregion
 
     public void SetPlayerReference(Transform playerRef, Transform ghostRef)
     {

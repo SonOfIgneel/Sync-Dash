@@ -12,6 +12,7 @@ public class PlayerController : MonoBehaviour
     public ParticleSystem particles;
     public GameObject collectedOrb;
 
+    #region Setting up rigid body properties, moving the player with gradual increase in speed along with jump functionality
     void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -43,7 +44,9 @@ public class PlayerController : MonoBehaviour
             rb.velocity += Vector3.down * 0.2f;
         }
     }
+    #endregion
 
+    #region Handle interactable objects
     private void OnCollisionEnter(Collision collision)
     {
         Debug.Log("obj: " + collision.gameObject.name);
@@ -71,4 +74,5 @@ public class PlayerController : MonoBehaviour
             GameObject.Find("Orbs Spawner").GetComponent<OrbManager>().CollectOrb(other.gameObject);
         }
     }
+    #endregion
 }

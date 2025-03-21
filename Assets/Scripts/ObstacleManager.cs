@@ -3,28 +3,29 @@ using System.Collections.Generic;
 
 public class ObstacleManager : MonoBehaviour
 {
-    public List<GameObject> obstaclePrefabs; // List of different obstacles
-    public int poolSize = 5; // Number of obstacles in the queue
-    public float spawnDistance = 50f; // Distance between obstacles
+    public List<GameObject> obstaclePrefabs;
+    public int poolSize = 5;
+    public float spawnDistance = 50f;
+    public GameManager manager;
 
-    private Queue<GameObject> playerObstacleQueue = new Queue<GameObject>();
-    private Queue<GameObject> ghostObstacleQueue = new Queue<GameObject>();
+    public Queue<GameObject> playerObstacleQueue = new Queue<GameObject>();
+    public Queue<GameObject> ghostObstacleQueue = new Queue<GameObject>();
 
-    public Transform player; // Reference to Player
+    public Transform player;
     public float lastSpawnZ;
-    public int passedObstacles = 0; // Track how many obstacles the player has passed
+    public int passedObstacles = 0;
 
-    void Start()
+    #region  Spawn
+    public void Spawn()
     {
         lastSpawnZ = player.position.z + spawnDistance;
 
-        // Pre-instantiate obstacle objects
         for (int i = 0; i < poolSize; i++)
         {
-            // Select a random obstacle from the list
             GameObject playerObstacle = Instantiate(GetRandomObstacle(), new Vector3(0, 1, lastSpawnZ), Quaternion.identity);
-            GameObject ghostObstacle = Instantiate(playerObstacle, new Vector3(-50, 1, lastSpawnZ), Quaternion.identity); // Same obstacle on Ghost track
-
+            GameObject ghostObstacle = Instantiate(playerObstacle, new Vector3(-50, 1, lastSpawnZ), Quaternion.identity);
+            manager.instantiatedObjects.Add(playerObstacle);
+            manager.instantiatedObjects.Add(ghostObstacle);
             playerObstacleQueue.Enqueue(playerObstacle);
             ghostObstacleQueue.Enqueue(ghostObstacle);
 
@@ -33,9 +34,15 @@ public class ObstacleManager : MonoBehaviour
         }
     }
 
+    GameObject GetRandomObstacle()
+    {
+        return obstaclePrefabs[Random.Range(0, obstaclePrefabs.Count)];
+    }
+    #endregion
+
+    #region  Reuse the obstacles after the player crosses them
     void Update()
     {
-        // If player moves past an obstacle, count it
         if ((player.position.z - 50f) > lastSpawnZ - (spawnDistance * (poolSize - 1)))
         {
             RecycleObstacle();
@@ -47,21 +54,15 @@ public class ObstacleManager : MonoBehaviour
         Debug.Log("Recycle");
         lastSpawnZ += spawnDistance;
 
-        // Take oldest player obstacle and move it forward
         GameObject oldPlayerObstacle = playerObstacleQueue.Dequeue();
         oldPlayerObstacle.transform.position = new Vector3(0, 1, lastSpawnZ);
         playerObstacleQueue.Enqueue(oldPlayerObstacle);
 
-        // Move the corresponding ghost obstacle
         GameObject oldGhostObstacle = ghostObstacleQueue.Dequeue();
         oldGhostObstacle.transform.position = new Vector3(-50, 1, lastSpawnZ);
         ghostObstacleQueue.Enqueue(oldGhostObstacle);
     }
-
-    GameObject GetRandomObstacle()
-    {
-        return obstaclePrefabs[Random.Range(0, obstaclePrefabs.Count)];
-    }
+    #endregion
 
     public void SetPlayerReference(Transform playerRef)
     {

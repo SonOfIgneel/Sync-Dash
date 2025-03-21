@@ -5062,3 +5062,4 @@ MonoBehaviour:
   isGrounded: 0
   collided: 0
   particles: {fileID: 3495145719051216217}
+  collectedOrb: {fileID: 0}
