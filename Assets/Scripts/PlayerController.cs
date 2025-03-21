@@ -70,6 +70,7 @@ public class PlayerController : MonoBehaviour
         {
             particles.Play();
             manager.score += 5;
+            manager.collectSound.Play();
             Debug.Log("Orbs collected");
             GameObject.Find("Orbs Spawner").GetComponent<OrbManager>().CollectOrb(other.gameObject);
         }

@@ -22,7 +22,8 @@ public class GameManager : MonoBehaviour
     public GroundManager groundManager;
     public ObstacleManager obstacleManager;
     public OrbManager orbManager;
-
+    public AudioSource collectSound, gameSound;
+    public AudioClip gameOverClip;
     private GameObject player;
     private GameObject ghost;
     public float score;
@@ -42,6 +43,7 @@ public class GameManager : MonoBehaviour
     #region Start Game, End game Functions
     public void StartGame()
     {
+        gameSound.Play();
         mainMenuUI.SetActive(false);
         gameOverUI.SetActive(false);
         isGameRunning = true;
@@ -77,8 +79,10 @@ public class GameManager : MonoBehaviour
     public void GameOver()
     {
         cameraFollow.Shake();
+        collectSound.clip = gameOverClip;
+        collectSound.Play();
         isGameRunning = false;
-
+        gameSound.Stop();
         scoreText.gameObject.SetActive(false);
 
         player.GetComponent<Rigidbody>().velocity = Vector3.zero;
@@ -110,6 +114,11 @@ public class GameManager : MonoBehaviour
     #endregion
 
     #region Restart, Main menu button functions
+    public void QuitGame()
+    {
+        Application.Quit();
+    }
+
     public void RestartGame()
     {
         ResetGame();
