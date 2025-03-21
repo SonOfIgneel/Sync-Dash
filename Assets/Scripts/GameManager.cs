@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -8,35 +9,27 @@ public class GameManager : MonoBehaviour
     [Header("UI Elements")]
     public GameObject mainMenuUI;
     public GameObject gameOverUI;
-    public Text scoreText;
+    public TextMeshProUGUI scoreText;
 
     [Header("Prefabs")]
     public GameObject groundPrefab;
     public GameObject playerPrefab;
     public GameObject ghostPrefab;
 
+    [Header("Hierarchy Elements")]
+    public CameraFollow cameraFollow;
+    public GroundManager groundManager;
+    public ObstacleManager obstacleManager;
+    public OrbManager orbManager;
+
     private GameObject player;
     private GameObject ghost;
-    private int score = 0;
-    private bool isGameRunning = false;
+    public float score;
+    public bool isGameRunning = false;
 
     void Awake()
     {
         instance = this; // Singleton pattern
-    }
-
-    void Start()
-    {
-
-    }
-
-    void Update()
-    {
-        if (isGameRunning)
-        {
-            score += Mathf.FloorToInt(Time.deltaTime * 10);
-            scoreText.text = "Score: " + score;
-        }
     }
 
     // 🚀 Called when Start Button is clicked
@@ -47,32 +40,36 @@ public class GameManager : MonoBehaviour
         isGameRunning = true;
         Time.timeScale = 1;
 
-        SpawnGround();
         SpawnPlayerAndGhost();
-    }
-
-    // 🚀 Spawns two connected ground pieces
-    void SpawnGround()
-    {
-        Instantiate(groundPrefab, new Vector3(0, 0, 0), Quaternion.identity);
-        Instantiate(groundPrefab, new Vector3(-50, 0, 0), Quaternion.identity);
     }
 
     // 🚀 Spawns the player & ghost at their positions
     void SpawnPlayerAndGhost()
     {
-        player = Instantiate(playerPrefab, new Vector3(5, 1, 0), Quaternion.identity);
-        ghost = Instantiate(ghostPrefab, new Vector3(-5, 1, 0), Quaternion.identity);
-
-        // Give Ghost the Player Reference
+        player = Instantiate(playerPrefab, new Vector3(0, 2.5f, 0), Quaternion.identity);
+        ghost = Instantiate(ghostPrefab, new Vector3(-50, 2.5f, 0), Quaternion.identity);
         ghost.GetComponent<GhostController>().SetPlayerReference(player.transform);
+        player.GetComponent<PlayerController>().manager = this;
+        cameraFollow.SetPlayerReference(player.transform);
+        cameraFollow.enabled = true;
+        obstacleManager.SetPlayerReference(player.transform);
+        obstacleManager.enabled = true;
+        orbManager.SetPlayerReference(player.transform, ghost.transform);
+        orbManager.enabled = true;
+        groundManager.SetPlayerReference(player.transform);
+        groundManager.gameObject.SetActive(true);
     }
 
     // 🚀 Called when player crashes
     public void GameOver()
     {
         isGameRunning = false;
-        Time.timeScale = 0;
+
+        // Stop Player and Ghost Movement Instead of Time.timeScale = 0
+        player.GetComponent<Rigidbody>().velocity = Vector3.zero;
+        player.GetComponent<PlayerController>().enabled = false;
+
+        // Show Game Over UI
         gameOverUI.SetActive(true);
     }
 
