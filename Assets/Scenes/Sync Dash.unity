@@ -152,7 +152,7 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 1e6c7499820a0bf4c9bf5a2ebc6cf349, type: 3}
+  m_audioClip: {fileID: 0}
   m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
@@ -2825,6 +2825,7 @@ MonoBehaviour:
   collectSound: {fileID: 110763493}
   gameSound: {fileID: 1299040264}
   gameOverClip: {fileID: 8300000, guid: 873336b7788de3c48bee579e7c9edb18, type: 3}
+  orbCollectClip: {fileID: 8300000, guid: 1e6c7499820a0bf4c9bf5a2ebc6cf349, type: 3}
   score: 0
   isGameRunning: 0
   dummyObjects: {fileID: 1333026084}

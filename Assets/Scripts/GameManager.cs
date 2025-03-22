@@ -23,7 +23,7 @@ public class GameManager : MonoBehaviour
     public ObstacleManager obstacleManager;
     public OrbManager orbManager;
     public AudioSource collectSound, gameSound;
-    public AudioClip gameOverClip;
+    public AudioClip gameOverClip, orbCollectClip;
     private GameObject player;
     private GameObject ghost;
     public float score;
@@ -43,6 +43,7 @@ public class GameManager : MonoBehaviour
     #region Start Game, End game Functions
     public void StartGame()
     {
+        collectSound.clip = orbCollectClip;
         gameSound.Play();
         mainMenuUI.SetActive(false);
         gameOverUI.SetActive(false);
